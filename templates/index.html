@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <ul>
+    {% for order in orders %}
+        <li>
+            <span>№: </span> {{ order.id }}
+            <span>№ заказа: </span> {{ order.order }}
+            <span>Цена в долларах: </span> {{ order.price }}
+            <span>Дата поставки: </span> {{ order.delivery_date }}
+            <span>Цена в рублях: </span> {{ order.rub_price }}
+        </li>
+    {% endfor %}
+    </ul>
+</body>
+</html>
