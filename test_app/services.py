@@ -1,37 +1,20 @@
+from decimal import Decimal
+from typing import Tuple, Dict, List, Any
+
 import datetime
 import json
-from decimal import Decimal
-from typing import Tuple, Dict, List
-
 import httplib2
 import requests
+
 from django.core import serializers
 from googleapiclient.discovery import build
-from xml.etree import ElementTree
-
 from oauth2client.service_account import ServiceAccountCredentials
 
-from django.conf import settings
-
-from bot import send_telegram
+from creds.config import token, channel_id
 from test_app.models import Orders
 
 
-class DataNotExist(Exception):
-    pass
-
-
-class TimeoutException(Exception):
-    pass
-
-
-SHEET_ID = '1ZZSVYG6IQLl7ZiYdweGIOUllFmpZMgYs_1tqScY2n54'
-NAME_LIST = 'Лист1'
-CURRENCY = 'USD'
-CREDS_FILE = str(settings.BASE_DIR) + "/creds/credentials.json"
-
-
-def get_service_acc(creds_json: str):
+def get_service_acc(creds_json: str) -> Any:
 
     scopes = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -39,25 +22,23 @@ def get_service_acc(creds_json: str):
     return build('sheets', 'v4', http=creds_service)
 
 
-def get_valute_currency() -> Decimal:
-    url = 'https://www.cbr.ru/scripts/XML_daily.asp'
-    response = requests.get(url, timeout=3)
-    if not response:
-        raise TimeoutException
-    tree = ElementTree.fromstring(response.content)
-    value = 0
-    for elem in tree.iter('Valute'):
-        if elem.find('CharCode').text == CURRENCY:
-            value = Decimal(elem.find('Value').text.replace(',', '.'))
-            return value
-    if not value:
+def send_telegram(text: str) -> None:
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    r = requests.post(url, data={
+         "chat_id": channel_id,
+         "text": text
+          })
+    try:
+        if r.status_code != 200:
+            raise ValueError
+    except ValueError:
         raise
 
 
 class GoogleSheetConnect:
-    def __init__(self, cred_json: str, sheet_id: str, sheet_list: str) -> None:
+    def __init__(self, cred_json: str, sheet_id: str, sheet_list: str, cur_value: Decimal) -> None:
         self.account = get_service_acc(cred_json)
-        self.currency = get_valute_currency()
+        self.currency = cur_value
         self.sheet_id = sheet_id
         self.sheet_list = sheet_list
 
@@ -68,13 +49,15 @@ class GoogleSheetConnect:
             range=self.sheet_list).execute()
         values = result.get('values', [])
         if not values:
-            raise DataNotExist('No data found.')
+            raise
         return values[1:]
 
     def get_sheet_data(self) -> Tuple:
         sheet_data = tuple(item[1:] for item in self.pull_sheet_data())
-        print(sheet_data)
-        data_rub = tuple(round(Decimal(item[1]) * self.currency, 2) for item in sheet_data)
+        try:
+            data_rub = tuple(round(Decimal(item[1]) * self.currency, 2) for item in sheet_data)
+        except IndexError:
+            raise
         for i in range(len(sheet_data)):
             sheet_data[i][2] = datetime.datetime.strptime(sheet_data[i][2], "%d.%m.%Y").strftime("%Y-%m-%d")
             sheet_data[i].append(data_rub[i])
@@ -119,31 +102,3 @@ class GoogleSheetConnect:
 
     def delete_from_db(self, deletion_orders: List) -> None:
         Orders.objects.filter(order__in=deletion_orders).delete()
-
-    # def poll_update(self) -> None:
-    #     data_sheet = self.get_sheet_data()
-    #     data_db = self.get_data_db()
-    #     deletion_orders = self.get_deletion_orders(data_sheet, data_db)
-    #     if deletion_orders:
-    #         self.delete_from_db(deletion_orders)
-    #     changed_data = self.get_changed_data(data_sheet, data_db)
-    #     if changed_data:
-    #         update_objs = Orders.objects.in_bulk([int(item['order']) for item in changed_data], field_name='order')
-    #         if update_objs:
-    #             update_data = [item for item in changed_data if int(item['order']) in set(update_objs.keys())]
-    #             create_data = [item for item in changed_data if int(item['order']) not in set(update_objs.keys())]
-    #             self.update_db(update_objs, update_data)
-    #             if create_data:
-    #                 self.create_in_db(create_data)
-    #         else:
-    #             self.create_in_db(changed_data)
-    #
-    # def send_message_to_tm(self):
-    #     today = datetime.date.today()
-    #     delivered = Orders.objects.filter(delivery_date=today)
-    #     for order in delivered:
-    #         message = f'Order #{order.order} was delivered'
-    #         send_telegram(message)
-
-
-GOOGLE_SHEETS = GoogleSheetConnect(cred_json=CREDS_FILE, sheet_id=SHEET_ID, sheet_list=NAME_LIST)
