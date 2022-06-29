@@ -38,7 +38,6 @@ def poll_update() -> None:
     cur_value = global_preferences_registry.manager().by_name()['cur_value']
     if not cur_value:
         cur_value = get_valute_currency()
-
     google_sheets = GoogleSheetConnect(cred_json=CREDS_FILE, sheet_id=SHEET_ID,
                                        sheet_list=NAME_LIST, cur_value=cur_value)
     data_sheet = google_sheets.get_sheet_data()
