@@ -47,10 +47,10 @@ def poll_update() -> None:
         google_sheets.delete_from_db(deletion_orders)
     changed_data = google_sheets.get_changed_data(data_sheet, data_db)
     if changed_data:
-        update_objs = Orders.objects.in_bulk([int(item['order']) for item in changed_data], field_name='order')
+        update_objs = Orders.objects.in_bulk([int(item['pk']) for item in changed_data], field_name='id')
         if update_objs:
-            update_data = [item for item in changed_data if int(item['order']) in set(update_objs.keys())]
-            create_data = [item for item in changed_data if int(item['order']) not in set(update_objs.keys())]
+            update_data = [item for item in changed_data if int(item['pk']) in set(update_objs.keys())]
+            create_data = [item for item in changed_data if int(item['pk']) not in set(update_objs.keys())]
             google_sheets.update_db(update_objs, update_data)
             if create_data:
                 google_sheets.create_in_db(create_data)
