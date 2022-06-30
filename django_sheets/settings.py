@@ -9,25 +9,29 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import os
 from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 from celery.schedules import crontab
+import environ
 
+
+env = environ.Env()
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-*)o$zjlrk+9ji3_+^(3i6&1)smujs$7$e8z4wh$8vb(2!eiw(j'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=True)
 
-ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1']
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 
 # Application definition
@@ -42,7 +46,6 @@ INSTALLED_APPS = [
     'test_app',
     'dynamic_preferences',
     'django_celery_beat',
-    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -82,8 +85,12 @@ WSGI_APPLICATION = 'django_sheets.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': env.str('DB_ENGINE'),
+        'NAME': env.str('DB_NAME'),
+        'USER': env.str('DB_USER'),
+        'PASSWORD': env.str('DB_PASSWORD'),
+        'HOST': env.str('DB_HOST'),
+        'PORT': env.str('DB_PORT'),
     }
 }
 
@@ -129,10 +136,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-BROKER_URL = 'redis://localhost:6379'
+BOT_TOKEN = env('BOT_TOKEN')
+CHANNEL_ID = env.str('CHANNEL_ID')
 
-CELERY_BROKER_URL = 'redis://localhost:6379'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+BROKER_URL = env.cache('BROKER_URL', default='redis://localhost:6379')
+
+CELERY_BROKER_URL = env.cache('CELERY_BROKER_URL', default='redis://localhost:6379')
+CELERY_RESULT_BACKEND = env.cache('CELERY_RESULT_BACKEND', default='redis://localhost:6379')
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -140,7 +150,7 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULE = {
     'poll_update': {
         'task': 'poll_update',
-        'schedule': timedelta(seconds=10),
+        'schedule': timedelta(seconds=30),
     },
     'send_message_to_tm': {
         'task': 'send_message_to_tm',
@@ -156,29 +166,39 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        # 'console': {
-        #     'format': '%(name)-12s %(levelname)-8s %(message)s'
-        # },
+        'console': {
+            'format': '%(name)-12s %(levelname)-8s %(message)s'
+        },
         'file': {
             'format': '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
         }
     },
     'handlers': {
-        # 'console': {
-        #     'class': 'logging.StreamHandler',
-        #     'formatter': 'console'
-        # },
-        'file': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'console'
+        },
+        'main_file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'formatter': 'file',
-            'filename': 'debug.log'
+            'filename': 'errors.log',
+        },
+        'data_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'formatter': 'file',
+            'filename': 'data_debug.log',
         }
     },
     'loggers': {
-        'logger': {
+        'main': {
+            'level': 'ERROR',
+            'handlers': ['main_file', ]
+        },
+        'data_logger': {
             'level': 'DEBUG',
-            'handlers': ['file', ]
-        }
+            'handlers': ['data_file', ]
+        },
     }
 }
