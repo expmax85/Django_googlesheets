@@ -71,13 +71,15 @@ def send_message_to_tm() -> None:
     from test_app.services import send_telegram
     from test_app.services import main_logger
 
-    today = datetime.date.today()
-    delivered = Orders.objects.filter(delivery_date=today)
-    if delivered:
-        if settings.BOT_TOKEN and settings.CHANNEL_ID:
+    token = settings.BOT_TOKEN
+    channel_id = settings.CHANNEL_ID
+    if token and channel_id:
+        today = datetime.date.today()
+        delivered = Orders.objects.filter(delivery_date=today)
+        if delivered:
             for order in delivered:
                 message = f'Order #{order.order} was delivered.'
-                send_telegram(message)
-        else:
-            main_logger.error('You need to enter bot_token and channel_id to sending the messages.')
+                send_telegram(message, token=token, channel_id=channel_id)
+    else:
+        main_logger.error('You need to enter bot_token and channel_id to sending the messages.')
 

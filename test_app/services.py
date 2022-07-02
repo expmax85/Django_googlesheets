@@ -24,8 +24,8 @@ data_logger = logging.getLogger('data_logger')
 
 
 def get_credential(path_creds_file: str):
-    """Shows basic usage of the Sheets API.
-    Prints values from a sample spreadsheet.
+    """
+    Get the access to Shhets API
     """
     creds = None
     scopes = ['https://www.googleapis.com/auth/spreadsheets']
@@ -55,9 +55,11 @@ def get_credential(path_creds_file: str):
         main_logger.error('Failed connect to googlesheets', exc_info=err)
 
 
-def send_telegram(text: str) -> None:
-    token = settings.BOT_TOKEN
-    channel_id = settings.CHANNEL_ID
+def send_telegram(text: str, token, channel_id) -> None:
+    """
+    Function for sending the messages to telegram. Need to specify BOT_TOKEN and CHANNEL_ID in settings.py
+    See more in ReadMe.md
+    """
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     response = requests.post(url, data={
@@ -69,6 +71,9 @@ def send_telegram(text: str) -> None:
 
 
 class GoogleSheetConnect:
+    """
+    Create connection wth google sheets api and get datat from sheets and list, specifying in django admin options
+    """
     def __init__(self, cred_json: str, sheet_id: str, sheet_list: str, cur_value: Decimal) -> None:
         self.credential = get_credential(cred_json)
         self.currency = cur_value
@@ -76,6 +81,10 @@ class GoogleSheetConnect:
         self.sheet_list = sheet_list
 
     def pull_sheet_data(self) -> List:
+        """
+        Method for getting data from googlesheet
+        :return: List[List]
+        """
         sheet = self.credential.spreadsheets()
         result = sheet.values().get(
             spreadsheetId=self.sheet_id,
@@ -87,6 +96,10 @@ class GoogleSheetConnect:
         return values[1:]
 
     def get_sheet_data(self) -> Dict:
+        """
+        Method for processing data from Google. In particular, the data is sorted into valid and invalid, the currency is calculated for valid data.
+        :return: Dict[List[List]]
+        """
         sheet_dict = {
             'clean_data': [],
             'invalid_exist_data': [],
@@ -134,6 +147,10 @@ class GoogleSheetConnect:
 
     @classmethod
     def get_data_db(cls) -> Tuple:
+        """
+        Get the data form Database in tuple-format
+        :return: Tuple[List]
+        """
         data_db = json.loads(serializers.serialize('json', Orders.objects.all()))
         res = tuple(list(item['fields'].values()) for item in data_db)
         for item in zip(res, data_db):
@@ -142,6 +159,10 @@ class GoogleSheetConnect:
 
     @classmethod
     def get_changed_data(cls, data_sheet: Dict, data_db: Tuple) -> List:
+        """
+        Retrieving changed data from a table relative to a database. Proccessing data only cleaned_data from googlesheets
+        :return: List[Dict]
+        """
         changed_data = []
         set_sheet = get_set(data_sheet['clean_data'], depth_end=5)
         set_db = get_set(data_db, depth_end=5)
@@ -155,6 +176,10 @@ class GoogleSheetConnect:
 
     @classmethod
     def get_deletion_orders(cls, data_sheet: Dict, data_db: Tuple) -> Tuple:
+        """
+        Get the tuple with id for deletion from Database
+        "return: Tuple
+        """
         set_sheet = set(int(item[0]) for item in data_sheet['clean_data'])
         set_db = set(int(item[0]) for item in data_db)
         set_exist = set([int(item[0]) for item in data_sheet['invalid_exist_data']])
@@ -163,6 +188,9 @@ class GoogleSheetConnect:
 
     @classmethod
     def create_in_db(cls, data: List) -> None:
+        """
+        Create new instances in Database
+        """
         Orders.objects.bulk_create(Orders(
             id=int(item['pk']),
             order=item['order'],
@@ -173,6 +201,9 @@ class GoogleSheetConnect:
 
     @classmethod
     def update_db(cls, objs: Dict, data: List) -> None:
+        """
+        Update instances in Database
+        """
         for item in zip(list(objs.values()), data):
             item[0].order = item[1]['order']
             item[0].price = int(item[1]['price'])
@@ -182,4 +213,7 @@ class GoogleSheetConnect:
 
     @classmethod
     def delete_from_db(cls, deletion_orders: Tuple[Dict]) -> None:
+        """
+        Delete instances from Database
+        """
         Orders.objects.filter(order__in=deletion_orders).delete()
