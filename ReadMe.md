@@ -14,12 +14,16 @@ python -m pip install -r requirements.txt
 ```
 
 ### Создание api-приложения в системе google
-Для работы проекта необходимо предоставить json-файл подключения к сервисам google:
-`инструкция`
-Получить token для вашего телеграм-бота, который будет отправлять сообщение:
-`инструкция`
-Узнать id вашего профиля в телеграме:
-`инструкция`
+Для работы проекта необходимо предоставить json-файл подключения к сервисам google.Для этого:
+ - создайте проект: [инструкция](https://cloud.google.com/resource-manager/docs/creating-managing-projects?hl=ru#creating_a_project)
+ - создайте учетные данные и получите файл `client_secret.json`: [инструкция](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred). При создании учетных данных, необходимо добавить в Authorized redirect URIs адрес: http://127.0.0.1:5000 для вашей последующей авторизации
+ - Переименуйте файл `client_secret.json `в `credentials.json` и поместите его в папку `creds`, которую необходимо создать в корневой директории проекта.
+
+Получить `token` для вашего телеграм-бота, который будет отправлять сообщение:
+[инструкция](https://core.telegram.org/bots#6-botfather)
+
+Узнать id вашего профиля в телеграмме:
+[инструкция](https://perfluence.net/blog/article/kak-uznat-id-telegram#h-article-61a651fb18fdb)
 
 Cоздать файл `.env` и заполнить его по шаблону файла `.env.template`.
 Установить и создать БД, заполнить все поля файла `.env`.
@@ -34,7 +38,6 @@ python manage.py runserver 0.0.0.0:8000
 redis-server
 celery -A django_sheets worker -l info
 celery -A django_sheets beat -l info
-celery -A django_sheets flower
 ```
 
 ## Docker
@@ -51,4 +54,4 @@ sudo docker-compose up
 
 Через административную панель осуществляется настройка таких параметров, как id книги из google sheets, с которого считывается информация, 
 название и диапазон листа, валюта, из которой нужно осуществить перевод, курс рубля, который обновляется автоматически в планировщике задач celery. 
-А также id профиля в телеграме, которому будет отправляться сообщение о доставленных ордерах.
+А также id профиля в телеграмме, которому будет отправляться сообщение о доставленных ордерах.

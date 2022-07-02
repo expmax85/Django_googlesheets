@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - my_net
+  web:
+    image: expmax85/django_sheets_web:latest
+    command:  >
+      sh -c "python manage.py makemigrations --no-input && 
+             python manage.py migrate --no-input && 
+             python manage.py runserver 0.0.0.0:8000"
+
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - db
+      - redis
+    networks:
+      - my_net
+  redis:
+    image: redis:latest
+    command: redis-server
+    ports:
+      - "6379:6379"
+    networks:
+      - my_net
+  celery:
+    restart: always
+    image: expmax85/django_sheets_web:latest
+    command: celery -A django_sheets worker -l info
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+      - web
+    networks:
+      - my_net
+  celery_beat:
+    restart: always
+    image: expmax85/django_sheets_web:latest
+    command: celery -A django_sheets beat -l info
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+      - web
+    networks:
+      - my_net
+networks:
+  my_net:
+    name: my_net
+    driver: bridge

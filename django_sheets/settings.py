@@ -85,12 +85,12 @@ WSGI_APPLICATION = 'django_sheets.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': env.str('DB_ENGINE'),
-        'NAME': env.str('DB_NAME'),
-        'USER': env.str('DB_USER'),
-        'PASSWORD': env.str('DB_PASSWORD'),
-        'HOST': env.str('DB_HOST'),
-        'PORT': env.str('DB_PORT'),
+        'ENGINE': env.str('DB_ENGINE', default='django.db.backends.sqlite3'),
+        'NAME': env.str('DB_NAME', default='db.sqlite3'),
+        'USER': env.str('DB_USER', default=None),
+        'PASSWORD': env.str('DB_PASSWORD', default=None),
+        'HOST': env.str('DB_HOST', default=None),
+        'PORT': env.str('DB_PORT', default=None),
     }
 }
 
@@ -131,6 +131,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
@@ -139,10 +141,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 BOT_TOKEN = env('BOT_TOKEN')
 CHANNEL_ID = env.str('CHANNEL_ID')
 
-BROKER_URL = env.cache('BROKER_URL', default='redis://localhost:6379')
+REDIS_HOST = env.str('REDIS_HOST', default='localhost')
+REDIS_PORT = env.int('REDIS_PORT', default=6379)
+BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
-CELERY_BROKER_URL = env.cache('CELERY_BROKER_URL', default='redis://localhost:6379')
-CELERY_RESULT_BACKEND = env.cache('CELERY_RESULT_BACKEND', default='redis://localhost:6379')
+CELERY_BROKER_URL = BROKER_URL
+CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

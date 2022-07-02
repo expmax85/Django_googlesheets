@@ -66,12 +66,18 @@ def poll_update() -> None:
 @app.task(name='send_message_to_tm')
 def send_message_to_tm() -> None:
     import datetime
+    from django.conf import settings
     from test_app.models import Orders
     from test_app.services import send_telegram
+    from test_app.services import main_logger
 
     today = datetime.date.today()
     delivered = Orders.objects.filter(delivery_date=today)
     if delivered:
-        for order in delivered:
-            message = f'Order #{order.order} was delivered.'
-            send_telegram(message)
+        if settings.BOT_TOKEN and settings.CHANNEL_ID:
+            for order in delivered:
+                message = f'Order #{order.order} was delivered.'
+                send_telegram(message)
+        else:
+            main_logger.error('You need to enter bot_token and channel_id to sending the messages.')
+
